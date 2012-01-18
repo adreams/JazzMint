@@ -204,17 +204,14 @@ JazzMint.SpecFile = new JazzMint.Class({
 JazzMint.define({
 
   config : {
-    useConfigFile : true,
-    configFilePath : './jazzmint.config.example.js',
-    jazzMintPath : './JazzMint',
-    jasminePath : './jasmine',
+    jasminePath : './jasmine/lib/jasmine-core',
     specDir : './Spec',
     sourceDir : './Source',
 
     jasmineFiles : {
-      'jasmine' : '/lib/jasmine-core/jasmine.js',
-      'jasmine-html' : '/lib/jasmine-core/jasmine-html.js',
-      'jasmine-css' : '/lib/jasmine-core/jasmine.css'
+      'jasmine' : 'jasmine.js',
+      'jasmine-html' : 'jasmine-html.js',
+      'jasmine-css' : 'jasmine.css'
     },
 
     assets : {
@@ -233,19 +230,36 @@ JazzMint.define({
     }
   },
 
+  setConfigFilePath : function(path) {
+    this.getConfig().configFilePath = path;
+  },
+
+  getConfigFilePath : function() {
+    return this.getConfig().configFilePath;
+  },
+
+  hasConfigFile : function() {
+    try {
+      return this.getConfigFilePath().length > 0;
+    }
+    catch(e) {
+      return false;
+    }
+  },
+
   loadLibraries : function() {
     var order = [];
     var assets = {};
 
     var jasmineFiles = this.getConfig().jasmineFiles;
     for(var i in jasmineFiles) {
-      var file = this.config.jasminePath + jasmineFiles[i];
+      var file = JazzMint.joinPath(this.config.jasminePath,jasmineFiles[i]);
       assets[i] = file;
     }
 
-    if(this.config.useConfigFile) {
+    if(this.hasConfigFile()) {
       order.push('config');
-      assets['config'] = this.config.configFilePath;
+      assets['config'] = this.getConfigFilePath();
     }
     order = order.concat(['jasmine','jasmine-html','jasmine-css']);
     for(var i in assets) {
@@ -326,36 +340,135 @@ JazzMint.define({
   onLibraryFailed : function(key) {
   },
 
-  defineSuite : function(name,options) {
-    this.getTestSuites()[name] = options;
+  defineTestSuite : function(name,options) {
+    options = JazzMint.extend(this.getConfig(),options);
+    this.getTestSuites()[name] = new JazzMint.TestSuite(name,options);
+  }
+
+});
+
+JazzMint.TestSuite = new JazzMint.Class({
+
+  initialize : function(name,config) {
+    this.name = name;
+    this.config = config || {};
+
+    this.setSpecFiles(this.config.specFiles);
+    delete this.config.specFiles;
+
+    this.setSourceFiles(this.config.sourceFiles);
+    delete this.config.sourceFiles;
   },
 
-  preloadTestSuite : function(test,options) {
-    var suite = this.getTestSuite(test);
-    if(!suite) {
-      (options.onUndefined || function() { })();
-      return;
+  getConfig : function() {
+    return this.config;
+  },
+
+  getSpecDir : function() {
+    return this.getConfig().specDir;
+  },
+
+  getSourceDir : function() {
+    return this.getConfig().sourceDir;
+  },
+
+  getName : function() {
+    return this.name;
+  },
+
+  setSpecFiles : function(files) {
+    var appendSpec = this.getConfig().appendSpecToFiles;
+    var appendJS = this.getConfig().appendJSToFiles;
+    var querystring = this.getSpecFilesQuerystring();
+
+    if(typeof(files) == 'string') {
+      files = files.split(',');
     }
-
-    var onReady = options.onReady || function() { };
-    var onFailure = options.onFailure || function() { };
-
-    var specs = suite.specFiles;
-    for(var i=0;i<specs.length;i++) {
-      specs[i] = JazzMint.joinPath(this.getConfig().specDir,specs[i]);
+    for(var i=0;i<files.length;i++) {
+      var file = files[i];
+      file = JazzMint.joinPath(this.getSpecDir(),file);
+      if(appendJS) {
+        file += file.indexOf('.js') >= 0 ? '' : '.js';
+      }
+      if(appendSpec) {
+        file = file.replace(/(?:_spec)?\.(css|js)/,"_spec.$1");
+      }
+      if(querystring) {
+        file = file.replace(/\.(css|js)\??/,".$1?" + querystring + '&');
+      }
+      files[i] = file;
     }
+    this.specFiles = files;
+  },
 
-    var sources = suite.sourceFiles;
-    for(var i=0;i<sources.length;i++) {
-      sources[i] = JazzMint.joinPath(this.getConfig().sourceDir,sources[i]);
+  getSpecFiles : function() {
+    return this.specFiles;
+  },
+
+  getSpecFilesQuerystring : function() {
+    var qs = this.getConfig().queryString;
+    if(qs && typeof(qs) != 'string') {
+      qs = qs.specFiles;
     }
+    if(qs == 'random') {
+      qs = Math.random()+'';
+    }
+    return qs && qs.length > 0 ? qs : null;
+  },
 
-    var assets = specs.concat(sources);
-    var total = assets.length;
+  getSourceFilesQuerystring : function() {
+    var qs = this.getConfig().queryString;
+    if(qs && typeof(qs) != 'string') {
+      qs = qs.sourceFiles;
+    }
+    if(qs == 'random') {
+      qs = Math.random()+'';
+    }
+    return qs && qs.length > 0 ? qs : null;
+  },
+
+  setSourceFiles : function(files) {
+    var appendJS = this.getConfig().appendJSToFiles;
+    var querystring = this.getSourceFilesQuerystring();
+
+    if(typeof(files) == 'string') {
+      files = files.split(',');
+    }
+    for(var i=0;i<files.length;i++) {
+      var file = files[i];
+      file = JazzMint.joinPath(this.getSourceDir(),file);
+      if(appendJS) {
+        file += file.indexOf('.js') >= 0 ? '' : '.js';
+      }
+      if(querystring) {
+        file = file.replace(/\.(css|js)\??/,".$1?" + querystring + '&');
+      }
+      files[i] = file;
+    }
+    this.sourceFiles = files;
+  },
+
+  getSourceFiles : function() {
+    return this.sourceFiles;
+  },
+
+  getFiles : function() {
+    return this.getSourceFiles().concat(this.getSpecFiles());
+  },
+
+  isReady : function() {
+    return this.ready;
+  },
+
+  preload : function(onReady,onFailure) {
+    var files = this.getFiles();
+    var total = files.length;
     var count = 0;
 
     for(var i=0;i<total;i++) {
-      JazzMint.loadJavaScriptAsset(assets[i],
+      var file = files[i];
+      var method = file.match(/\.css(\?|\#)?.*$/) ? 'loadStylesheetAsset' : 'loadJavaScriptAsset';
+      JazzMint[method](file,
         function() {
           count += 1;
           if(count >= total && onReady) {
@@ -364,9 +477,12 @@ JazzMint.define({
           }
         },
         function() {
-          onReady = null;
+          count += 1;
           onFailure();
-          onFailure = null;
+          if(count >= total && onReady) {
+            onReady();
+            onReady = null;
+          }
         }
       );
     }
@@ -388,6 +504,10 @@ JazzMint.Runner = new JazzMint.Class({
 
   getTestSuiteName : function() {
     return this.testName;
+  },
+
+  getTestSuite : function() {
+    return JazzMint.getTestSuite(this.getTestSuiteName());
   },
 
   getConfig : function() {
@@ -422,24 +542,27 @@ JazzMint.Runner = new JazzMint.Class({
   },
 
   onFailure : function() {
-    alert('fail');
+    this.fireEvent('failure');
   },
 
   load : function() {
     var that = this;
-    var test = this.getTestSuiteName();
-    if(!JazzMint.hasTestSuite(test)) {
+    var suite = this.getTestSuite();
+    if(!suite) {
       this.onMissingTestSuite(test);
     }
     else {
-      JazzMint.preloadTestSuite(test,{
-        onReady : function() {
+      suite.preload(
+        function() {
           that.onReady.apply(that);
         },
-        onFailure : function() {
+        function() {
+          if(suite.getConfig().quitWhenLoadFailure) {
+            that.onReady = function() { };
+          }
           that.onFailure.apply(that);
         }
-      });
+      )
       this.onLoading();
     }
   },

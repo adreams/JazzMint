@@ -2,21 +2,22 @@ JazzMint.defineConfig({
 
   specDir : './Spec', //this should point to where your Spec Files are located
   sourceDir : './Source',
-  jazzMintDir : './lib/JazzMint',
 
-  appendJSToTestSuiteFiles : true,
-  appendSpecToTestSuiteFiles : true
+  appendSpecToFiles : true,
+  appendJSToFiles : true
 
 });
 
-JazzMint.defineSuite('all',{
+JazzMint.defineTestSuite('all',{
 
-  specFiles : [
-    'hello_spec.js'
-  ],
+  quitWhenLoadFailure : true,
 
-  sourceFiles : [
-    'hello.js'
-  ]
+  queryString : {
+    specFiles : 'random',
+    sourceFiles : 'random'
+  },
+
+  specFiles : 'hello,testing',
+  sourceFiles : 'hello'
 
 });

@@ -5,21 +5,12 @@
 </head> 
 
 <body id="" class=""> 
-  <div id="wrapper">
-  </div>
 <script type="text/javascript" src="./jazzmint.js"></script>
 <script type="text/javascript">
-JazzMint.defineConfig({
-
-});
-
+JazzMint.setConfigFilePath('./jazzmint.config.example.js');
 JazzMint.init(function() {
 
-    var runner = new JazzMint.Runner({
-      
-    });
-
-    runner.start();
+  new JazzMint.Runner().start();
 
 });
 </script>
