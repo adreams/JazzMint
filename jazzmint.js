@@ -248,15 +248,19 @@ JazzMint.define({
   },
 
   loadLibraries : function() {
-    var order = [];
     var assets = {};
-
     var jasmineFiles = this.getConfig().jasmineFiles;
     for(var i in jasmineFiles) {
       var file = JazzMint.joinPath(this.config.jasminePath,jasmineFiles[i]);
       assets[i] = file;
     }
 
+    var assetFiles = this.getConfig().assets;
+    for(var i in assetFiles) {
+      assets[i] = assetFiles[i];
+    }
+
+    var order = [];
     if(this.hasConfigFile()) {
       order.push('config');
       assets['config'] = this.getConfigFilePath();
@@ -493,12 +497,12 @@ JazzMint.TestSuite = new JazzMint.Class({
 JazzMint.Runner = new JazzMint.Class({
 
   initialize : function(testName,options) {
-    if(typeof(testName) != 'string') {
-      options = testName;
-      testName = 'all';
+    if((testName == null && options == null) || typeof(testName) != 'string') {
+      options = testName || {};
+      testName = null;
     }
 
-    this.testName = testName;
+    this.testName = testName || 'all';
     this.setOptions(options);
   },
 
@@ -576,17 +580,60 @@ JazzMint.Runner = new JazzMint.Class({
     }
   },
 
+  getJasmineReporter : function() {
+    if(!this.jasmineReporter) {
+      this.jasmineReporter = new jasmine.TrivialReporter(); 
+    }
+    return this.jasmineReporter;
+  },
+
+  getJasmineRunner : function() {
+    return this.getJasmineEnv().currentRunner();
+  },
+
+  getJasmineEnv : function() {
+    return this.getJasmine().getEnv();
+  },
+
+  getJasmine : function() {
+    return jasmine;
+  },
+
   run : function() {
-    jasmine.getEnv().addReporter(new jasmine.TrivialReporter());
-    jasmine.getEnv().execute();
+    var that = this;
+    var env = this.getJasmineEnv();
+    this.totalSpecs = env.currentRunner().specs().length;
+    env.addReporter(this.getJasmineReporter());
+    env.afterEach(function() {
+      that.onAfterEach.apply(that,arguments);
+    });
+    env.beforeEach(function() {
+      that.onBeforeEach.apply(that,arguments);
+    });
+
+    this.specCounter = 0;
+    this.onStart();
+    env.execute();
   },
 
-  pause : function() {
-
+  onAfterEach : function() {
+    this.fireEvent('afterEach');
+    this.specCounter++;
+    if(this.specCounter >= this.totalSpecs) {
+      this.onFinish();
+    }
   },
 
-  onComplete : function() {
+  onBeforeEach : function() {
+    this.fireEvent('beforeEach');
+  },
 
+  onStart : function() {
+    this.fireEvent('start',[this.totalSpecs]);
+  },
+
+  onFinish : function() {
+    this.fireEvent('finish',[this.totalSpecs]);
   }
 
 });
