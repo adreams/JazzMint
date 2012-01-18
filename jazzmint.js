@@ -192,6 +192,11 @@ JazzMint.define({
     else {
       this.onReady();
     }
+    this.initialized = true;
+  },
+
+  isInitialized : function() {
+    return this.initialized;
   },
 
   setConfigFilePath : function(path) {
@@ -513,6 +518,14 @@ JazzMint.Runner = new JazzMint.Class({
 
   load : function() {
     var that = this;
+
+    if(!JazzMint.isInitialized()) {
+      JazzMint.init(function() {
+        that.load.apply(that);
+      });
+      return;
+    }
+
     var suite = this.getTestSuite();
     if(!suite) {
       this.onMissingTestSuite(test);
