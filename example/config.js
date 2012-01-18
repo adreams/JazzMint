@@ -1,7 +1,7 @@
 JazzMint.defineConfig({
 
-  specDir : './Spec', //this should point to where your Spec Files are located
-  sourceDir : './Source',
+  specDir : './example/Spec', //this should point to where your Spec Files are located
+  sourceDir : './example/Source',
 
   appendSpecToFiles : true,
   appendJSToFiles : true

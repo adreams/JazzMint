@@ -1,0 +1,7 @@
+JazzMint is an easy to use runner-script for the Jasmine Testing Framework.
+
+The plugin can be downloaded into any directory and the source & spec files can be configured to be loaded from anywhere.
+
+Check the example.html file to see how it works.
+
+More information and documentation coming soon.
