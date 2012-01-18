@@ -24,6 +24,11 @@ JazzMint.define = function(args) {
   }
 };
 
+JazzMint.loadAsset = function(src,onload,onerror) {
+  var method = src.match(/\.css(\?|\#)?.*$/) ? 'loadStylesheetAsset' : 'loadJavaScriptAsset';
+  JazzMint[method](src,onload,onerror);
+}
+
 JazzMint.loadJavaScriptAsset = function(src,onload,onerror) {
   var script = document.createElement('script');
   script.src = src;
@@ -160,47 +165,6 @@ JazzMint.Class = function(args) {
   }
 };
 
-JazzMint.SpecFile = new JazzMint.Class({
-
-  initialize : function(src) {
-    this.src = src;
-  },
-
-  getSrc : function() {
-    return this.src;
-  },
-
-  isLoaded : function() {
-    return this.loaded;
-  },
-
-  hasFailed : function() {
-    return this.failed;
-  },
-
-  onReady : function() {
-    this.loaded = true;
-    this.fireEvent('ready');
-  },
-
-  onFailure : function() {
-    this.failed = true;
-    this.fireEvent('failed');
-  },
-
-  load : function() {
-    var that = this;
-    JazzMint.loadJS(this.getSrc(),function() {
-        that.onReady.apply(that);
-      },
-      function() {
-        that.onFailure.apply(that);
-      }
-    );
-  }
-
-});
-
 JazzMint.define({
 
   config : {
@@ -279,8 +243,7 @@ JazzMint.define({
     for(var i=0;i<order.length;i++) {
       var key = order[i];
       var asset = assets[key];
-      var method = asset.match(/\.css(\?|\#)?.*$/) ? 'loadStylesheetAsset' : 'loadJavaScriptAsset';
-      JazzMint[method](asset,
+      JazzMint.loadAsset(asset,
         function() { //success
           that.onLibraryLoaded.apply(that,[key]);
         },
@@ -471,8 +434,7 @@ JazzMint.TestSuite = new JazzMint.Class({
 
     for(var i=0;i<total;i++) {
       var file = files[i];
-      var method = file.match(/\.css(\?|\#)?.*$/) ? 'loadStylesheetAsset' : 'loadJavaScriptAsset';
-      JazzMint[method](file,
+      JazzMint.loadAsset(file,
         function() {
           count += 1;
           if(count >= total && onReady) {
@@ -591,6 +553,10 @@ JazzMint.Runner = new JazzMint.Class({
     return this.getJasmineEnv().currentRunner();
   },
 
+  getRunnerResults : function() {
+    return this.getJasmineRunner().results();
+  },
+
   getJasmineEnv : function() {
     return this.getJasmine().getEnv();
   },
@@ -599,10 +565,17 @@ JazzMint.Runner = new JazzMint.Class({
     return jasmine;
   },
 
+  getSpecs : function() {
+    return this.getJasmineRunner().specs();
+  },
+
+  getTotalSpecs : function() {
+    return this.getSpecs().length;
+  },
+
   run : function() {
     var that = this;
     var env = this.getJasmineEnv();
-    this.totalSpecs = env.currentRunner().specs().length;
     env.addReporter(this.getJasmineReporter());
     env.afterEach(function() {
       that.onAfterEach.apply(that,arguments);
@@ -619,8 +592,28 @@ JazzMint.Runner = new JazzMint.Class({
   onAfterEach : function() {
     this.fireEvent('afterEach');
     this.specCounter++;
-    if(this.specCounter >= this.totalSpecs) {
+    if(this.specCounter >= this.getTotalSpecs()) {
+      this.inspecResults();
       this.onFinish();
+    }
+  },
+
+  inspecResults : function() {
+    var results = this.getRunnerResults();
+    var total = results.totalCount;
+    var passed = results.passedCount;
+    var failed = results.failedCount;
+    if(passed == total) {
+      this.onAllPass();
+    }
+    else if(failed == total) {
+      this.onAllFail();
+    }
+    if(passed > 0) {
+      this.onPass();
+    }
+    if(failed > 0) {
+      this.onFail();
     }
   },
 
@@ -629,11 +622,27 @@ JazzMint.Runner = new JazzMint.Class({
   },
 
   onStart : function() {
-    this.fireEvent('start',[this.totalSpecs]);
+    this.fireEvent('start',[this.getTotalSpecs()]);
   },
 
   onFinish : function() {
-    this.fireEvent('finish',[this.totalSpecs]);
+    this.fireEvent('finish',[this.getTotalSpecs()]);
+  },
+
+  onAllPass : function() {
+    this.fireEvent('allPass');
+  },
+
+  onFail : function() {
+    this.fireEvent('fail');
+  },
+
+  onAllFail : function() {
+    this.fireEvent('allFail');
+  },
+
+  onPass : function() {
+    this.fireEvent('pass');
   }
 
 });
